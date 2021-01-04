@@ -1,9 +1,5 @@
 
 
-
-
-
-
 # HTTPS防抓包机制
 
 [TOC]
@@ -76,9 +72,76 @@
 
 > `HTTP`+加密+认证+完整性保护 = `HTTPS`
 
-#### 2.2.3 `HTTPS`单向认证
+#### 2.1.3 `HTTPS`单向认证
 
 ![image](https://github.com/tianyalu/NePreventHttpsPacketCapture/raw/master/show/https_one_way_authentication.png)
 
+#### 2.1.4 `HTTPS`双向认证
+
+![image](https://github.com/tianyalu/NePreventHttpsPacketCapture/raw/master/show/https_two_way_authentication.png)
+
+#### 2.1.5 抓包原理
+
+![image](https://github.com/tianyalu/NePreventHttpsPacketCapture/raw/master/show/packet_capture_theory.png)
+
 ## 三、`https`防抓包手段
 
+### 3.1 网络代理
+
+#### 3.1.1 代理检测
+
+* 检测是否使用网络代理
+* 将网络库（如`OKHttp`库）设置为无代理模式，不走系统代理
+
+```java
+// HttpURLConnection:
+URL url = new URL(urlStr);
+urlConnection = (HttpURLConnection) url.openConnection(Proxy.NO_PROXY);
+
+// OkHttp:
+OkHttpClient client = new OkHttpClient().newBuilder().proxy(Proxy.NO_PROXY).build();
+```
+
+#### 3.1.2 防御破解
+
+```java
+try {
+  var URL = Java.use("java.net.URL");
+  URL.openConnection.overload('java.net.Proxy').implementation = function() {
+    return this.openConnection();
+  }
+} catch(e) {
+  console.log("" + e);
+}
+
+try {
+  var Builder = Java.use("okhttp3.OkHttpClient$Builder");
+  var mybuilder = Builder.$new();
+  Builder.proxy.overload('java.net.Proxy').implementation = function(arg1) {
+    return mybuilder;
+  }
+} catch(e) {
+  console.log("" + e);
+}
+```
+
+### 3.2 证书固定
+
+#### 3.2.1 `SSL-Pinning`
+
+* 证书锁定（`Certificate Pinning`）: 在客户端代码内置仅接受指定域名的证书，而不接受操作系统或浏览器内置的`CA`根证书对应的任何证书；-->弊端：证书有效期问题
+* 公钥锁定（`Public key Pinning`）：提取证书中的公钥并内置到客户端中，通过与服务器对比公钥值来验证链接的正确性。
+
+#### 3.2.2 破解`SSL-Pinning`
+
+`Xposed`框架 + `justTrustMe`插件
+
+* `Xposed`框架：`Android`上应用广泛的`HOOK`框架，基于`Xposed`框架制作的外挂模块可以`hook`任意应用层的`java`函数，修改函数实现；
+* `justTrustMe`插件：`justTrustMe`插件是一个用来禁用、绕过`SSL`证书检查的基于`Xposed`模块，将`Android`系统中所有用于校验`SSL`证书的`API`证书的`API`都进行了`Hook`，从而绕过证书检查。
+
+### 3.3 对抗`HOOK`
+
+* 检测`HOOK`：检测`Xposed`、`Frida`、`Substrate`等`HOOK`框架；
+* 使用`Socket`连接：使用`Socket`走`TCP/UDP`，防止被应用层抓包；
+* 传输数据加密：协议字段加密传输，并因此秘钥，应用层加固；
+* `native`层传输：将网络传输逻辑写到`jni`层实现，提高反编译门槛。
