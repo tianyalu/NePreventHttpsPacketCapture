@@ -22,8 +22,8 @@
 
  **注意**：安装证书过程需要手机`wifi`设置电脑`IP`地址代理，否则不会下载证书。
 
-* 在手机浏览器中访问地址`chls.pro/ssl`；
-* `PC`端口设置代理`https`端口
+* 在手机浏览器中访问地址`chls.pro/ssl`，下载并安装`Charles`根证书；
+* `PC`端口设置代理`https`端口（域名地址）
 
 `Proxy --> SSL Proxying Settings`
 
